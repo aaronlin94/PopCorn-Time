@@ -202,14 +202,22 @@ function MovieDetails({ selectedId, setWatched, onSelectedId, watched }) {
   const [movie, setMovie] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   // can solve the problem by setting a function state as well in setUserRating
-  const [userRating, setUserRating] = useState(null);
+  const [userRating, setUserRating] = useState(function () {
+    const watchedUserRating = watched.find(
+      (element) => element.imdbID === selectedId
+    )?.userRating;
+    return watchedUserRating || null;
+  });
+
   // derived state from watched. when clicking remove list, the watched state changes so watchedUserRating dervied state got calculated again
-  const watchedUserRating =
-    watched.find((element) => element.imdbID === selectedId)?.userRating ||
-    null;
+  // const watchedUserRating =
+  //   watched.find((element) => element.imdbID === selectedId)?.userRating ||
+  //   null;
+
   const [currentWatchedMovie] = watched.filter(
     (element) => element.imdbID === selectedId
   );
+
   // check if currentSelected movie is in the watched array or not
   // includes can only check string like values, not objects, so need to convert the objects array into some value array
   const watchedId = watched
@@ -225,22 +233,35 @@ function MovieDetails({ selectedId, setWatched, onSelectedId, watched }) {
   useEffect(
     function () {
       if (!watchedId) return;
-      currentWatchedMovie.userRating = userRating || watchedUserRating;
+
       // watch state will change so, watchedUserRating will be calculated again
+      const indexInList = watched.indexOf(currentWatchedMovie);
       setWatched((watched) =>
         watched.filter((element) => element.imdbID !== selectedId)
       );
-      setWatched((watched) => [...watched, currentWatchedMovie]);
-      // console.log(counter)
+      currentWatchedMovie.userRating = userRating;
+      // correct algorithm for placing currentWatchedMovie in its place correctly back in the array list.
+      // imagine this scenario, watched=[0,1,3,4,5]=[watched.slice(0,2),2,watched.slice(2)]
+      // because in original watched array, watched[2] is still 3.
+      setWatched((watched) => [
+        ...watched.slice(0, indexInList),
+        currentWatchedMovie, ...watched.slice(indexInList)
+      ]);
+    },
+    [userRating]
+  );
+  useEffect(
+    function () {
+      console.log(userRating);
     },
     [userRating]
   );
 
   useEffect(
     function () {
-      setUserRating(watchedUserRating);
+      if (!watchedId) setUserRating(null);
     },
-    [watchedUserRating]
+    [watchedId]
   );
 
   const {
@@ -336,6 +357,7 @@ function MovieDetails({ selectedId, setWatched, onSelectedId, watched }) {
                   !watchedId
                     ? handleSetWatched
                     : () => {
+                        setUserRating(null);
                         setWatched((watched) =>
                           watched.filter(
                             (element) => element.imdbID !== selectedId
